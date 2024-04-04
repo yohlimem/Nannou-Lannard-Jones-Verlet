@@ -65,9 +65,10 @@ fn gen_atoms(model: &mut Model, n: u32, seed_size: u32) {
         for y in 0..(f32::sqrt(seed_size as f32) as u32) {
             let new_x = model.plate_size.0 / 2.0 + (x as f32 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32 * model.sigma * 0.3;
             let new_y = model.plate_size.1 / 2.0 + (y as f32 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32 * model.sigma * 0.3;
-            println!("{}", (x + y) as f32%2.0);
+            // println!("{}", (x + y) as f32%2.0);
             // l.push(Points::new(vec2(new_x, new_y), vec2(0.0, 0.0), vec2(0.0, 0.0), model.plate_size, (x + y) as f32%2.0 - 0.4));
             l.push(Points::new(vec2(new_x, new_y), vec2(0.0, 0.0), vec2(0.0, 0.0), model.plate_size, (x + y) as f32%2.0 - 0.4));
+            // l.push(Points::new(vec2(new_x, new_y), vec2(0.0, 0.0), vec2(0.0, 0.0), model.plate_size, 0.5));
         }
     }
     model.p_l = l.clone();
@@ -128,12 +129,12 @@ fn update(app: &App, model: &mut Model, update: Update) {
         let ctx = egui.begin_frame();
 
         egui::Window::new("Simulation controls").show(&ctx, |ui| {
-            ui.label("step_size");
-            ui.add(egui::Slider::new(&mut model.K, 1.0..=200.0));
-            ui.label("sigma/distance");
-            ui.add(egui::Slider::new(&mut model.sigma, 1.0..=100.0));
-            ui.label("epsilon");
-            ui.add(egui::Slider::new(&mut model.epsilon, 1.0..=1000.0));
+            // ui.label("step_size");
+            // ui.add(egui::Slider::new(&mut model.K, 1.0..=200.0));
+            // ui.label("sigma/distance");
+            // ui.add(egui::Slider::new(&mut model.sigma, 1.0..=100.0));
+            // ui.label("epsilon");
+            // ui.add(egui::Slider::new(&mut model.epsilon, 1.0..=1000.0));
             ui.label("speed");
             ui.add(egui::Slider::new(&mut model.speed, 1.0..=100.0));
             // speed

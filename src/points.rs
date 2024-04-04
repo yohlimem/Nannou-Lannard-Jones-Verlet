@@ -58,7 +58,7 @@ impl Points {
     }
 
     fn force(&self, r: f32) -> f32 {
-        let epsilon = 1000.0; // replace with actual value
+        let epsilon = 100.0; // replace with actual value
         let sigma = 10.0; // replace with actual value
 
         let mut r2 = 0.0;
@@ -72,11 +72,8 @@ impl Points {
         -4.0 * epsilon * ((12.0 * (sigma.powi(12)) / r2.powi(13)) - (6.0 * (sigma.powi(6)) / r2.powi(7)))
     }
     fn charge_force(&self, p: &Points, r: f32) -> f32 {
-        let k = 100.0;
-        if r > 100.0 {
-            return 0.0;
-        }
-        if r < 1.0 {
+        let k = 1000.0;
+        if r < 2.0 {
             return  k * -self.charge * p.charge / 1.0;
         }
         k * -self.charge * p.charge / (r*r)
