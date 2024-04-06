@@ -1,6 +1,6 @@
+
 use nannou::prelude::*;
 
-use crate::Model;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Points {
@@ -13,6 +13,8 @@ pub struct Points {
 }
 
 impl Points {
+    const SIGMA:f32 = 10.0;
+    const EPSILON:f32 = 100.0;
     pub fn new(x0: Vec2, v0: Vec2, a: Vec2, plate_size: (f32, f32), charge: f32) -> Self {
         Points {
             pos: x0,
@@ -58,25 +60,26 @@ impl Points {
     }
 
     fn force(&self, r: f32) -> f32 {
-        let epsilon = 100.0; // replace with actual value
-        let sigma = 10.0; // replace with actual value
 
         let mut r2 = 0.0;
-        if r > sigma*1.07{
+        if r > Self::SIGMA*1.07{
             r2 = r
         }
-        else{
-            r2 = sigma*1.07
+        else if r < Self::SIGMA*0.1 {
+            r2 = Self::SIGMA*0.9
+        }
+        else if r < Self::SIGMA*1.07 {
+            r2 = Self::SIGMA*1.07
         }
 
-        -4.0 * epsilon * ((12.0 * (sigma.powi(12)) / r2.powi(13)) - (6.0 * (sigma.powi(6)) / r2.powi(7)))
+        -4.0 * Self::EPSILON * ((12.0 * (Self::SIGMA.powi(12)) / r2.powi(13)) - (6.0 * (Self::SIGMA.powi(6)) / r2.powi(7)))
     }
     fn charge_force(&self, p: &Points, r: f32) -> f32 {
-        let k = 1000.0;
-        if r < 2.0 {
-            return  k * -self.charge * p.charge / 1.0;
+        let k = 30.0*Self::EPSILON;
+        if r < 1.0 {
+            return  (k * -self.charge * p.charge) / 1.0;
         }
-        k * -self.charge * p.charge / (r*r)
+        (k * -self.charge * p.charge) / (r*r)
     }
 
     pub fn dist_to(&self, p: &Points) -> f32 {
@@ -93,11 +96,33 @@ impl Points {
                 continue;
             }
             let r = self.dist_to(p);
-            if r > 100.0 {
+            if r > 300.0 {
                 continue;
             }
-            self.a += (self.force(r) / self.mass) * self.r_vector(p);
-            self.a += (self.charge_force(p, r) / self.mass) * self.r_vector(p);
+            let r_vec = self.r_vector(p);
+            let charge_force = self.charge_force(p, r);
+            let force = self.force(r);
+            let new_a = (self.force(r) / self.mass) * r_vec + (self.charge_force(p, r) / self.mass) * r_vec;
+            self.a += new_a;
+            // if force.abs() > 1000.0 {
+            //     println!("force: {}", force);
+            // }
+            // if charge_force.abs() > 1000.0{
+            //     println!("charge: {}", self.charge)
+            // }
+            // if force + charge_force > 1000.0 {
+            //     println!("force + charge: {}", force + charge_force);
+            // }
+            if new_a.length() > 1000.0 {
+                println!("r: {}", r);
+                println!("force: {}", force);
+                println!("charge: {}", self.charge);
+
+                println!("new a: {}", new_a);
+            }
+        }
+        if self.a.length() > 1000.0 {
+            println!("a: {}", self.a);
         }
         self.v *= 0.9992;
         // self.a -= self.a.normalize();
