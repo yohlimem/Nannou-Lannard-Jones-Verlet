@@ -100,8 +100,6 @@ impl Points {
                 continue;
             }
             let r_vec = self.r_vector(p);
-            let charge_force = self.charge_force(p, r);
-            let force = self.force(r);
             let new_a = (self.force(r) / self.mass) * r_vec + (self.charge_force(p, r) / self.mass) * r_vec;
             self.a += new_a;
             // if force.abs() > 1000.0 {
@@ -113,17 +111,17 @@ impl Points {
             // if force + charge_force > 1000.0 {
             //     println!("force + charge: {}", force + charge_force);
             // }
-            if new_a.length() > 1000.0 {
-                println!("r: {}", r);
-                println!("force: {}", force);
-                println!("charge: {}", self.charge);
+            // if new_a.length() > 1000.0 {
+            //     println!("r: {}", r);
+            //     println!("force: {}", force);
+            //     println!("charge: {}", self.charge);
 
-                println!("new a: {}", new_a);
-            }
+            //     println!("new a: {}", new_a);
+            // }
         }
-        if self.a.length() > 1000.0 {
-            println!("a: {}", self.a);
-        }
+        // if self.a.length() > 1000.0 {
+        //     println!("a: {}", self.a);
+        // }
         self.v *= 0.9992;
         // self.a -= self.a.normalize();
 
