@@ -68,7 +68,7 @@ impl Points {
         self.a = vec2(0.0, 0.0);
     }
 
-    fn force(&self, r: f32, epsilon: f32, sigma: f32) -> f32 {
+    pub fn force(r: f32, epsilon: f32, sigma: f32) -> f32 {
 
         let r2 = r;
         // if r > Self::SIGMA*1.07{
@@ -150,7 +150,7 @@ impl Points {
             if r > 100.0 {
                 continue;
             }
-            let force = self.force(r, epsilon, sigma);
+            let force = Self::force(r, epsilon, sigma);
             let r_vec = self.r_vector(p);
             let new_a = (force / self.mass) * r_vec + (self.charge_force(p, r) / self.mass) * r_vec;
             // self.potential += self.u(r);

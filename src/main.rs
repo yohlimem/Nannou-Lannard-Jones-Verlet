@@ -33,10 +33,10 @@ fn gen_atoms(model: &mut Model, n: u32, seed_size: u32) {
     let mut l: Vec<Points> = Vec::new();
     let mut rng = rand::thread_rng();
 
-    let seed_x0 = model.plate_size.0 / 2.0 + (0.0 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32 * 1.12246204831 * model.sigma;
-    let seed_y0 = model.plate_size.1 / 2.0 + (0.0 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32 * 1.12246204831 * model.sigma;
-    let seed_x1 = model.plate_size.0 / 2.0 + (f32::sqrt(seed_size as f32) - 1.0) / 2.0 * 1.12246204831 * model.sigma;
-    let seed_y1 = model.plate_size.1 / 2.0 + (f32::sqrt(seed_size as f32) - 1.0) / 2.0 * 1.12246204831 * model.sigma;
+    let seed_x0 = model.plate_size.0 / 2.0 + (0.0 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32 * 1.2 * model.sigma;
+    let seed_y0 = model.plate_size.1 / 2.0 + (0.0 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32 * 1.2 * model.sigma;
+    let seed_x1 = model.plate_size.0 / 2.0 + (f32::sqrt(seed_size as f32) - 1.0) / 2.0 * 1.2 * model.sigma;
+    let seed_y1 = model.plate_size.1 / 2.0 + (f32::sqrt(seed_size as f32) - 1.0) / 2.0 * 1.2 * model.sigma;
     for i in 0..n {
         let x = rng.gen_range(0.0..model.plate_size.0);
         let y = rng.gen_range(0.0..model.plate_size.1);
@@ -64,11 +64,11 @@ fn gen_atoms(model: &mut Model, n: u32, seed_size: u32) {
     }
     for x in 0..(f32::sqrt(seed_size as f32) as u32) {
         for y in 0..(f32::sqrt(seed_size as f32) as u32) {
-            let new_x = model.plate_size.0 / 2.0 + (x as f32 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32 * 1.12246204831 * model.sigma;
-            let new_y = model.plate_size.1 / 2.0 + (y as f32 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32 * 1.12246204831 * model.sigma;
+            let new_x = model.plate_size.0 / 2.0 + (x as f32 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32 * 1.2 * model.sigma;
+            let new_y = model.plate_size.1 / 2.0 + (y as f32 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32 * 1.2 * model.sigma;
             // println!("{}", (x + y) as f32%2.0);
             // l.push(Points::new(vec2(new_x, new_y), vec2(0.0, 0.0), vec2(0.0, 0.0), model.plate_size, (x + y) as f32%2.0 - 0.4));
-            l.push(Points::new(vec2(new_x, new_y), vec2(0.0, 0.0), vec2(0.0, 0.0), model.plate_size, (x + y) as f32%2.0 - 0.4));
+            l.push(Points::new(vec2(new_x, new_y), vec2(0.0, 0.0), vec2(0.0, 0.0), model.plate_size, (x + y) as f32%2.0 - 0.5));
             // l.push(Points::new(vec2(new_x, new_y), vec2(0.0, 0.0), vec2(0.0, 0.0), model.plate_size, 0.5));
         }
     }
@@ -113,7 +113,7 @@ fn model(app: &App) -> Model {
     let egui = Egui::from_window(&window);
     let num = 0.0;
     let seed_size = 100;
-    let atom_count = 100;
+    let atom_count = 300;
     // let p_l: Vec<Points> = p_l.into_iter().map(|(x, y)| Points::new(vec2(x, y), vec2(0.0, 0.0), vec2(0.0, 0.0))).collect();
     let mut model = Model {
         egui,
@@ -230,39 +230,39 @@ fn view(app: &App, model: &Model, frame: Frame) {
             .color(Rgba::new(1.0, p.charge,0.0 , 1.0));
     }
 
-    draw.rect()
-        .w_h(size.w(), size.h())
-        .x_y(size.w() / 1.2, size.h() / 1.5)
-        .stroke_color(BLACK)
-        .stroke_weight(1.0)
-        .no_fill();
+    // draw.rect()
+    //     .w_h(size.w(), size.h())
+    //     .x_y(size.w() / 1.2, size.h() / 1.5)
+    //     .stroke_color(BLACK)
+    //     .stroke_weight(1.0)
+    //     .no_fill();
     // draw_graph(&draw, app, &model);
 
     draw.to_frame(app, &frame).unwrap();
     model.egui.draw_to_frame(&frame).unwrap();
 }
 
-// fn draw_graph(draw: &Draw, app: &App, model: &Model) {
-//     let size = app.window_rect();
-//     let graph_x = size.w() / 3.0;
-//     let graph_y = size.h() / 3.0;
-//     // let graph_x = 0.0;
-//     // let graph_y = 0.0;
+fn draw_graph(draw: &Draw, app: &App, model: &Model) {
+    let size = app.window_rect();
+    let graph_x = size.w() / 3.0;
+    let graph_y = size.h() / 3.0;
+    // let graph_x = 0.0;
+    // let graph_y = 0.0;
 
-//     let size = vec2(3.0, 0.1);
+    let size = vec2(3.0, 0.1);
 
-//     for r in -5..1000 {
-//         if r == 0 || r == 1 {
-//             continue;
-//         }
-//         let start_x = (r as f32 - 1.0) * size.x + graph_x;
-//         let start_y = u(&model, r as f32 - 1.0) * size.y + graph_y;
-//         let end_x = r as f32 * size.x + graph_x;
-//         let end_y = u(&model, r as f32) * size.y + graph_y;
+    for r in -5..1000 {
+        if r == 0 || r == 1 {
+            continue;
+        }
+        let start_x = (r as f32 - 1.0) * size.x + graph_x;
+        let start_y = Points::force(r as f32 - 1.0, model.sigma, model.epsilon) * size.y + graph_y;
+        let end_x = r as f32 * size.x + graph_x;
+        let end_y = Points::force(r as f32 - 1.0, model.sigma, model.epsilon) * size.y + graph_y;
 
-//         draw.line()
-//             .start(pt2(start_x, start_y))
-//             .end(pt2(end_x, end_y))
-//             .color(BLACK);
-//     }
-// }
+        draw.line()
+            .start(pt2(start_x, start_y))
+            .end(pt2(end_x, end_y))
+            .color(BLACK);
+    }
+}
