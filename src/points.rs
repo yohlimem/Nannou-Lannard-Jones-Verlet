@@ -55,69 +55,18 @@ impl Points {
         // self.v += self.a * dt;
         self.pos += self.pos - self.last_pos + self.a * dt * dt;
         self.last_pos = self.pos;
-        // println!("{:?}", self.pos);
-        if self.pos.x > self.plate_size.0 || self.pos.x < 0.0 {
-            self.v.x *= -1.0;
-            // self.pos += self.v * dt;
-        }
-
-        if self.pos.y > self.plate_size.1 || self.pos.y < 0.0 {
-            self.v.y *= -1.0;
-            // self.pos += self.v * dt;
-        }
         self.a = vec2(0.0, 0.0);
     }
 
     pub fn force(r: f32, epsilon: f32, sigma: f32) -> f32 {
 
         let r2 = r;
-        // if r > Self::SIGMA*1.07{
-        //     r2 = r
-        // }
-        // else if r < 0.1{
-        //     r2 = Self::SIGMA*100.0;
-        // }
-        // else if r < Self::SIGMA*0.1 {
-        //     r2 = Self::SIGMA*2.0
-        // }
-        // else if r < Self::SIGMA*1.07 {
-        //     r2 = Self::SIGMA*1.07
-        // }
-
-        if r2.powi(13) <= 0.001 {
-            println!("die");
-        }
-
-
         let f = -2.0 * epsilon * ((12.0 * (sigma.powi(12)) / r2.powi(13)) - (6.0 * (sigma.powi(6)) / r2.powi(7)));
-        if f.abs() > 1000.0 {
-            println!("f: {}", f);
-            println!("A1: {}", (12.0 * (sigma.powi(12))) / r2.powi(13));
-            println!("A2: {}", (6.0 * (sigma.powi(6)) / r2.powi(7)));
-        }
         f
-    }
-
-    fn u(&self, r: f32) -> f32 {
-        // let mut r2 = r;
-        // if r > Self::SIGMA*1.07{
-        //     r2 = r
-        // }
-        // else if r < Self::SIGMA*0.1 {
-        //     r2 = Self::SIGMA*2.0
-        // }
-        // else if r < Self::SIGMA*1.07 {
-        //     r2 = Self::SIGMA*1.07
-        // }
-        //2.0 * Self::EPSILON * ((Self::SIGMA.powi(12) / r.powi(12)) - (Self::SIGMA.powi(6) / r.powi(6)))
-        0.0
     }
 
     fn charge_force(&self, p: &Points, r: f32) -> f32 {
         let k = 10.0 * 1000.0;
-        // if r < 1.0 {
-        //     return  (k * -self.charge * p.charge) / 1.0;
-        // }
         (k * -self.charge * p.charge) / (r*r)
     }
 
@@ -153,20 +102,6 @@ impl Points {
             let force = Self::force(r, epsilon, sigma);
             let r_vec = self.r_vector(p);
             let new_a = (force / self.mass) * r_vec + (self.charge_force(p, r) / self.mass) * r_vec;
-            // self.potential += self.u(r);
-            // print!("{}", self.potential);
-            if r_vec.is_nan() {
-                println!("r_vec: {}", r_vec);
-            }
-            if force.is_nan() {
-                println!("force: nan");
-            }
-            // if self.charge_force(p, r).is_nan() {
-            //     println!("charge: {}", self.charge)
-            // }
-            // if new_a.length() > 1000.0 {
-                
-            // }
             self.a += new_a;
         }
         let total_force = self.a.length() * self.mass;
