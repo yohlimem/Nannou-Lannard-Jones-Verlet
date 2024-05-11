@@ -66,21 +66,7 @@ fn gen_atoms(model: &mut Model, n: u32, seed_size: u32) {
     }
     for x in 0..(f32::sqrt(seed_size as f32) as u32) {
         for y in 0..(f32::sqrt(seed_size as f32) as u32) {
-            let new_x = model.plate_size.0 / 2.0
-                + (x as f32 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32
-                    * 1.12246204831
-                    * model.sigma;
-            let new_y = model.plate_size.1 / 2.0
-                + (y as f32 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32
-                    * 1.12246204831
-                    * model.sigma;
-            l.push(Points::new(
-                vec2(new_x, new_y),
-                vec2(0.0, 0.0),
-                vec2(0.0, 0.0),
-                model.plate_size,
-                (x + y) as f32 % 2.0 - 0.4,
-            ));
+            
             let new_x = model.plate_size.0 / 2.0
                 + (x as f32 - ((seed_size as f32).sqrt() - 1.0) / 2.0) as f32 * 1.2 * model.sigma;
             let new_y = model.plate_size.1 / 2.0
