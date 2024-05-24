@@ -1,9 +1,10 @@
 
-use nannou::prelude::*;
+use nannou::{lyon::geom::Angle, prelude::*};
 
 
 #[derive(Debug, Clone, Copy)]
 pub struct Points {
+    pub simulate: bool,
     pub pos: Vec2,
     pub last_pos: Vec2,
     pub v: Vec2,
@@ -11,40 +12,64 @@ pub struct Points {
     pub mass: f32,
     pub charge: f32,
     pub potential: f32,
-    pub plate_size: (f32, f32)
+    pub plate_radius: f32
 }
 
 impl Points {
     //pub const SIGMA:f32 = 10.0;
     //pub const EPSILON:f32 = 10.0;
-    pub fn new(x0: Vec2, v0: Vec2, a: Vec2, plate_size: (f32, f32), charge: f32) -> Self {
+    pub fn new(x0: Vec2, v0: Vec2, a: Vec2, plate_radius: f32, charge: f32, simulate: bool) -> Self {
         // println!("{:?}", Self::SIGMA);
+        
+        if !simulate {
+            return Points {
+                simulate,
+                pos: x0,
+                v: v0,
+                a,
+                mass: -1.0,
+                plate_radius,
+                charge,
+                potential: 0.0,
+                last_pos: x0, 
+            }
+        }
         Points {
-            pos: x0,
+            simulate,
+            pos: x0 + v0*0.1+a*0.01,
             v: v0,
             a,
             mass: 1.0,
-            plate_size,
+            plate_radius,
             charge,
             potential: 0.0,
-            last_pos: x0,
+            last_pos: x0, 
         }
     }
 
-    pub fn random_init(plate_size: Vec2, charge: f32) -> Self {
+    pub fn random_init(plate_radius: f32, charge: f32, temperature: f32) -> Self {
+        let angle = random_f32()*2.0*PI;
         let x = vec2(
-            random_range(0.0, plate_size.x),
-            random_range(0.0, plate_size.y),
+            angle.cos(),
+            angle.sin(),
+        ) * random_f32()*plate_radius;
+        // T = 0.5mv^2
+        // v^2 = T/0.5m
+        let angle = random_f32()*2.0*PI;
+        let v = (temperature/0.5).sqrt()
+        * vec2(
+            angle.cos(),
+            angle.sin(),
         );
-        let v = vec2(0.0, 0.0);
         let a = vec2(0.0, 0.0);
-
+        // println!("vel: {}", v);
         Points {
-            pos: x,
+            simulate: true,
+            pos: x + v*0.1+a*0.01,
             v,
             a,
             mass: 1.0,
-            plate_size: (plate_size.x, plate_size.y),
+            plate_radius,
             charge,
             last_pos: x,
             potential: 0.0,
@@ -52,16 +77,34 @@ impl Points {
     }
 
     pub fn solver(&mut self, dt: f32) {
-        // self.v += self.a * dt;
-        self.pos += self.pos - self.last_pos + self.a * dt * dt;
+        // println!("===========================");
+        // println!("pos: {}", self.pos);
+        // println!("last_pos: {}", self.last_pos);
+        if self.a.length() > 1000.0 {
+            self.a = self.a.normalize() * 100.0;
+        }
+        self.v = (self.pos - self.last_pos) / 1.0001;
         self.last_pos = self.pos;
+        self.pos += self.v + self.a * dt * dt;
         self.a = vec2(0.0, 0.0);
     }
+
 
     pub fn force(r: f32, epsilon: f32, sigma: f32) -> f32 {
 
         let r2 = r;
-        let f = -2.0 * epsilon * ((12.0 * (sigma.powi(12)) / r2.powi(13)) - (6.0 * (sigma.powi(6)) / r2.powi(7)));
+        let rp2 = r*r;
+        let rp4 = rp2*rp2;
+        let rp8 = rp4*rp4;
+        let rp13 = rp8*rp4*r;
+        let rp7 = rp4*rp2*r;
+
+        let sigma2 = sigma*sigma;
+        let sigma4 = sigma2*sigma2;
+        let sigma6 = sigma4*sigma2;
+        let sigma12 = sigma6*sigma6;
+
+        let f = -2.0 * epsilon * ((12.0 * (sigma12) / rp13) - (6.0 * (sigma6) / rp7));
         f
     }
 
@@ -91,21 +134,23 @@ impl Points {
     }
 
     pub fn step(&mut self, p_l: &[Points], epsilon: f32, sigma: f32) -> f32 {
+        if !self.simulate {return 0.0;}
         for p in p_l {
             if p.pos == self.pos {
                 continue;
             }
             let r = self.dist_to(p);
-            if r > 100.0 {
-                continue;
-            }
             let force = Self::force(r, epsilon, sigma);
             let r_vec = self.r_vector(p);
             let new_a = (force / self.mass) * r_vec + (self.charge_force(p, r) / self.mass) * r_vec;
-            self.a += new_a;
+            if p.simulate {
+                self.a += new_a;
+            } else if r < 200.0 {
+                self.a += -(r_vec*1000000000000.0);
+            }
         }
         let total_force = self.a.length() * self.mass;
-        self.solver(0.1);
+        self.solver(0.01);
         return total_force;
     }
 }
