@@ -30,7 +30,7 @@ struct Model {
     speed: f32,
     time: f32,
     stop_simulation: bool,
-    total_force: f32,
+    avg_temperature: f32,
     seed_size: u32,
     atom_count: u32,
 }
@@ -58,20 +58,21 @@ fn simulation_step(
     p_l: &mut Vec<Points>,
     app: &App,
     simulation_stop: &mut bool,
-    model_total_force: &mut f32,
+    model_avg_temperature: &mut f32,
     epsilon: f32,
     sigma: f32,
 ) {
     *p_l_copy = p_l.clone();
 
-    let mut total_force = 0.0;
+    let mut sum_temp = 0.0;
     if *simulation_stop {
         return;
     }
     for p in p_l_copy.iter_mut() {
-        total_force += p.step(p_l, epsilon, sigma);
+        p.step(p_l, epsilon, sigma);
+        sum_temp += p.temperature;
     }
-    *model_total_force = total_force;
+    *model_avg_temperature = sum_temp/p_l.len() as f32;
 
     *p_l = p_l_copy.clone();
 }
@@ -103,7 +104,7 @@ fn model(app: &App) -> Model {
         speed: 1.0,
         time: 0.0,
         stop_simulation: false,
-        total_force: 0.0,
+        avg_temperature: 0.0,
         seed_size,
         atom_count,
     };
@@ -124,7 +125,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
         egui::Window::new("Simulation controls").show(&ctx, |ui| {
             ui.label("temperature");
-            temp_slider = Some(ui.add(egui::Slider::new(&mut model.T, 1.0..=100.0)));
+            temp_slider = Some(ui.add(egui::Slider::new(&mut model.T, 1.0..=100000.0)));
             ui.label("sigma/distance");
             ui.add(egui::Slider::new(&mut model.sigma, 1.0..=100.0));
             ui.label("epsilon");
@@ -139,8 +140,8 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
             ui.label("time");
             ui.label(model.time.to_string());
-            ui.label("total potential");
-            ui.label(model.total_force.to_string());
+            ui.label("average temperature");
+            ui.label(model.avg_temperature.to_string());
 
             let stop = ui.button("Stop");
             if stop.clicked() {
@@ -155,7 +156,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                         &mut model.p_l,
                         app,
                         &mut false,
-                        &mut model.total_force,
+                        &mut model.avg_temperature,
                         model.epsilon,
                         model.sigma,
                     );
@@ -179,7 +180,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
             &mut model.p_l,
             app,
             &mut model.stop_simulation,
-            &mut model.total_force,
+            &mut model.avg_temperature,
             model.epsilon,
             model.sigma,
         );

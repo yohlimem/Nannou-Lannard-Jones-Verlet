@@ -12,7 +12,8 @@ pub struct Points {
     pub mass: f32,
     pub charge: f32,
     pub potential: f32,
-    pub plate_radius: f32
+    pub plate_radius: f32,
+    pub temperature: f32,
 }
 
 impl Points {
@@ -33,6 +34,7 @@ impl Points {
                 charge,
                 potential: 0.0,
                 last_pos: x0, 
+                temperature: v0.length()*v0.length()*0.5,
             }
         }
         Points {
@@ -45,6 +47,7 @@ impl Points {
             charge,
             potential: 0.0,
             last_pos: x0, 
+            temperature: v0.length()*v0.length()*0.5,
         }
     }
 
@@ -68,6 +71,8 @@ impl Points {
             simulate: true,
             pos: x + v*Self::DT+a*Self::DT*Self::DT,
             v,
+            temperature: v.length()*v.length()*0.5,
+
             a,
             mass: 1.0,
             plate_radius,
@@ -81,6 +86,8 @@ impl Points {
         // println!("===========================");
         // println!("pos: {}", self.pos);
         // println!("last_pos: {}", self.last_pos);
+        // println!("temp: {}", self.temperature);
+        // println!("vel: {}", self.v.length());
         if self.a.length() > 1000.0 {
             self.a = self.a.normalize() * 100.0;
         }
@@ -88,12 +95,12 @@ impl Points {
         self.last_pos = self.pos;
         self.pos += self.v + self.a * dt * dt;
         self.a = vec2(0.0, 0.0);
+        self.temperature = self.mass*self.v.length()*self.v.length()*0.5;
     }
 
 
     pub fn force(r: f32, epsilon: f32, sigma: f32) -> f32 {
 
-        let r2 = r;
         let rp2 = r*r;
         let rp4 = rp2*rp2;
         let rp8 = rp4*rp4;
@@ -134,8 +141,8 @@ impl Points {
         
     }
 
-    pub fn step(&mut self, p_l: &[Points], epsilon: f32, sigma: f32) -> f32 {
-        if !self.simulate {return 0.0;}
+    pub fn step(&mut self, p_l: &[Points], epsilon: f32, sigma: f32) {
+        if !self.simulate {return;}
         for p in p_l {
             if p.pos == self.pos {
                 continue;
@@ -146,11 +153,11 @@ impl Points {
             let new_a = (force / self.mass) * r_vec + (self.charge_force(p, r) / self.mass) * r_vec;
             self.a += new_a;
             if self.pos.length() > self.plate_radius{
-                self.a -= self.pos * 5.0;
+                self.a -= self.pos * 50.0;
             }
         }
-        let total_force = self.a.length() * self.mass;
+        // let total_force = self.a.length() * self.mass;
         self.solver(Self::DT);
-        return total_force;
+        // return total_force;
     }
 }
