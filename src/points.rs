@@ -18,6 +18,7 @@ pub struct Points {
 impl Points {
     //pub const SIGMA:f32 = 10.0;
     //pub const EPSILON:f32 = 10.0;
+    const DT:f32 = 0.01;
     pub fn new(x0: Vec2, v0: Vec2, a: Vec2, plate_radius: f32, charge: f32, simulate: bool) -> Self {
         // println!("{:?}", Self::SIGMA);
         
@@ -36,7 +37,7 @@ impl Points {
         }
         Points {
             simulate,
-            pos: x0 + v0*0.1+a*0.01,
+            pos: x0 + v0*Self::DT+a*Self::DT*Self::DT,
             v: v0,
             a,
             mass: 1.0,
@@ -65,7 +66,7 @@ impl Points {
         // println!("vel: {}", v);
         Points {
             simulate: true,
-            pos: x + v*0.1+a*0.01,
+            pos: x + v*Self::DT+a*Self::DT*Self::DT,
             v,
             a,
             mass: 1.0,
@@ -143,14 +144,13 @@ impl Points {
             let force = Self::force(r, epsilon, sigma);
             let r_vec = self.r_vector(p);
             let new_a = (force / self.mass) * r_vec + (self.charge_force(p, r) / self.mass) * r_vec;
-            if p.simulate {
-                self.a += new_a;
-            } else if r < 200.0 {
-                self.a += -(r_vec*1000000000000.0);
+            self.a += new_a;
+            if self.pos.length() > self.plate_radius{
+                self.a -= self.pos * 5.0;
             }
         }
         let total_force = self.a.length() * self.mass;
-        self.solver(0.01);
+        self.solver(Self::DT);
         return total_force;
     }
 }

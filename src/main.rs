@@ -37,13 +37,13 @@ struct Model {
 
 fn gen_atoms(model: &mut Model, n: u32, seed_size: u32) {
     let mut l = vec![];
-    let points = model.plate_radius;
+    // let points = model.plate_radius / 2.0;
     // make container
-    for i in 0..points as i32{
-        let angle = lerp(0.0..=2.0*PI, i as f32/points as f32);
-        let position = vec2(angle.cos(),angle.sin()) * model.plate_radius;
-        l.push(Points::new(position, Vec2::ZERO, Vec2::ZERO, model.plate_radius, 0.0, false));
-    }
+    // for i in 0..points as i32{
+    //     let angle = lerp(0.0..=2.0*PI, i as f32/points as f32);
+    //     let position = vec2(angle.cos(),angle.sin()) * model.plate_radius;
+    //     l.push(Points::new(position, Vec2::ZERO, Vec2::ZERO, model.plate_radius, 0.0, false));
+    // }
 
     for i in 0..n {
         l.push(Points::random_init(model.plate_radius - 20.0, 0.5 - i as f32 % 2.0, model.T))
