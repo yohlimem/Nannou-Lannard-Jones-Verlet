@@ -10,3 +10,5 @@ nannou = "0.19.0"
 rand = "0.8.5"
 nannou_egui = "0.19.0"
 egui_plot = "0.26.2"
+[profile.release]
+debug = true

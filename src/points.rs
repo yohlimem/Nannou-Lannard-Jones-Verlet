@@ -20,7 +20,7 @@ impl Points {
     //pub const SIGMA:f32 = 10.0;
     //pub const EPSILON:f32 = 10.0;
     const DT:f32 = 0.01;
-    pub fn new(x0: Vec2, v0: Vec2, a: Vec2, plate_radius: f32, charge: f32, simulate: bool) -> Self {
+    pub fn new(x0: Vec2, v0: Vec2, a: Vec2, plate_radius: f32, charge: f32, simulate: bool) -> Self { // create a new point
         // println!("{:?}", Self::SIGMA);
         
         if !simulate {
@@ -51,7 +51,7 @@ impl Points {
         }
     }
 
-    pub fn random_init(plate_radius: f32, charge: f32, temperature: f32) -> Self {
+    pub fn random_init(plate_radius: f32, charge: f32, temperature: f32) -> Self { // create a random new point using a radius
         let angle = random_f32()*2.0*PI;
         let x = vec2(
             angle.cos(),
@@ -82,16 +82,16 @@ impl Points {
         }
     }
 
-    pub fn solver(&mut self, dt: f32) {
+    pub fn solver(&mut self, dt: f32, temperature_depletion: f32) { // move the points according to an integration method
         // println!("===========================");
         // println!("pos: {}", self.pos);
         // println!("last_pos: {}", self.last_pos);
         // println!("temp: {}", self.temperature);
         // println!("vel: {}", self.v.length());
         if self.a.length() > 1000.0 {
-            self.a = self.a.normalize() * 100.0;
+            self.a = self.a.normalize() * 1000.0;
         }
-        self.v = (self.pos - self.last_pos) / 1.0001;
+        self.v = (self.pos - self.last_pos) * temperature_depletion;
         self.last_pos = self.pos;
         self.pos += self.v + self.a * dt * dt;
         self.a = vec2(0.0, 0.0);
@@ -99,7 +99,7 @@ impl Points {
     }
 
 
-    pub fn force(r: f32, epsilon: f32, sigma: f32) -> f32 {
+    pub fn force(r: f32, epsilon: f32, sigma: f32) -> f32 { // force between two points using the Lannard Jones potential
 
         let rp2 = r*r;
         let rp4 = rp2*rp2;
@@ -116,48 +116,71 @@ impl Points {
         f
     }
 
-    fn charge_force(&self, p: &Points, r: f32) -> f32 {
+    pub fn force_with_r_squared(r_squared: f32, epsilon: f32, sigma: f32) -> f32 { // use r squared to avoid calculating the square root (which didnt happen lol)
+        let r = r_squared.sqrt();
+        let rp4 = r_squared*r_squared;
+        let rp8 = rp4*rp4;
+        let rp13 = rp8*rp4*r;
+        let rp7 = rp4*r_squared*r;
+
+        let sigma2 = sigma*sigma;
+        let sigma4 = sigma2*sigma2;
+        let sigma6 = sigma4*sigma2;
+        let sigma12 = sigma6*sigma6;
+
+        let f = -2.0 * epsilon * ((12.0 * (sigma12) / rp13) - (6.0 * (sigma6) / rp7));
+        f
+    }
+
+
+    fn charge_force(&self, p: &Points, r: f32) -> f32 { // calculate the force between two points using the coulomb potential which is the magnetic force between two charges
         let k = 10.0 * 1000.0;
         (k * -self.charge * p.charge) / (r*r)
     }
 
-    pub fn dist_to(&self, p: &Points) -> f32 {
+    fn charge_force_r_squared(&self, p: &Points, r_squared: f32) -> f32 { // calculate the force between two points using the coulomb potential which is the magnetic force between two charges using r squared to avoid calculating the square root
+        let k = 10.0 * 1000.0;
+        (k * -self.charge * p.charge) / r_squared
+    }
+
+    pub fn dist_to(&self, p: &Points) -> f32 { // distance between two points
         let dist = self.pos.distance(p.pos);
         if dist == 0.0 {
             return 0.01;
         }
         dist
     }
-    pub fn dist_to_squared(&self, p: &Points) -> f32 {
+    pub fn dist_to_squared(&self, p: &Points) -> f32 { // distance squared between two points
         self.pos.distance_squared(p.pos)
     }
 
-    pub fn r_vector(&self, p: &Points) -> Vec2 {
-        let r = (p.pos - self.pos).normalize();
+    pub fn r_vector(&self, p: &Points) -> Vec2 { // vector between two points
+        let r = p.pos - self.pos;
         if r.is_nan() {
             return vec2(0.0, 0.0);
         }
         r
         
     }
+    
 
-    pub fn step(&mut self, p_l: &[Points], epsilon: f32, sigma: f32) {
+    pub fn step(&mut self, p_l: &[Points], epsilon: f32, sigma: f32 , temperature_depletion: f32) { // do a step of the simulation
         if !self.simulate {return;}
         for p in p_l {
             if p.pos == self.pos {
                 continue;
             }
-            let r = self.dist_to(p);
-            let force = Self::force(r, epsilon, sigma);
-            let r_vec = self.r_vector(p);
-            let new_a = (force / self.mass) * r_vec + (self.charge_force(p, r) / self.mass) * r_vec;
-            self.a += new_a;
-            if self.pos.length() > self.plate_radius{
-                self.a -= self.pos * 50.0;
+            let r_vec = self.r_vector(p); // calculate the vector between two points
+            let r = r_vec.length_squared(); // LENGTH SQUARED!!!
+
+            let force = Self::force_with_r_squared(r, epsilon, sigma); // use the Lannard Jones potential to calculate the force between two points its
+            let new_a = (force + self.charge_force_r_squared(p, r)) * r_vec.normalize() * 0.5 / self.mass; // calculate the acceleration of the point
+            self.a += new_a; // add the acceleration to the point
+            if self.pos.length() > self.plate_radius{ // if the point is outside the plate, add a force to bring it back
+                // spring forces
+                self.a += self.pos.normalize() * Self::force_with_r_squared(sigma/2.0.powf(1.0/6.0)+0.01, epsilon, sigma);
             }
         }
-        // let total_force = self.a.length() * self.mass;
-        self.solver(Self::DT);
-        // return total_force;
+        self.solver(Self::DT, temperature_depletion); // use the solver to move the points
     }
 }
