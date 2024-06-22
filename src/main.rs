@@ -87,7 +87,7 @@ fn simulation_step(
     sigma: f32,
     temperature_depletion: f32,
 ) { // do a step of the simulation
-    *p_l_copy = p_l.clone(); // clone the list of particles so we can move everything at the same time
+    // *p_l_copy = p_l.clone(); // clone the list of particles so we can move everything at the same time
 
     let mut sum_temp = 0.0;
     if *simulation_stop { // to stop the simualtion
@@ -122,7 +122,7 @@ fn model(app: &App) -> Model {
         sigma: 10.0,
         epsilon: 10.0,
         T: 20.0,
-        temperature_depletion: 0.999999,
+        temperature_depletion: 0.9995,
         plate_radius: 500.0,
         p_l_copy: vec![],
         p_l: vec![],
@@ -152,7 +152,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
             ui.label("temperature");
             temp_slider = Some(ui.add(egui::Slider::new(&mut model.T, 1.0..=100000.0)));
             ui.label("temperature depletion");
-            ui.add(egui::Slider::new(&mut model.temperature_depletion, 0.9..=1.0));
+            ui.add(egui::Slider::new(&mut model.temperature_depletion, 0.999..=1.00000001));
             ui.label("sigma/distance");
             ui.add(egui::Slider::new(&mut model.sigma, 1.0..=100.0));
             ui.label("epsilon");
@@ -236,14 +236,24 @@ fn view(app: &App, model: &Model, frame: Frame) {
     // draw circles
     for p in &model.p_l {
         // println!("p_l: {:?}", p);
+        if p.got_good{
+            draw.ellipse()
+                .x_y(
+                    p.pos.x,
+                    p.pos.y
+                )
+                .radius(5.0)
+                .color(BLACK);
+        } else {
+            draw.ellipse()
+                .x_y(
+                    p.pos.x,
+                    p.pos.y
+                )
+                .radius(5.0)
+                .color(Hsl::new((p.charge+0.5)*250.0, 1.0, 0.5));
 
-        draw.ellipse()
-            .x_y(
-                p.pos.x,
-                p.pos.y
-            )
-            .radius(5.0)
-            .color(Hsl::new((p.charge+0.5)*250.0, 1.0, 0.5));
+        }
     }
     draw.to_frame(app, &frame).unwrap();
     model.egui.draw_to_frame(&frame).unwrap();

@@ -14,6 +14,7 @@ pub struct Points {
     pub potential: f32,
     pub plate_radius: f32,
     pub temperature: f32,
+    pub got_good: bool,
 }
 
 impl Points {
@@ -35,6 +36,8 @@ impl Points {
                 potential: 0.0,
                 last_pos: x0, 
                 temperature: v0.length()*v0.length()*0.5,
+                got_good: false,
+
             }
         }
         Points {
@@ -48,6 +51,8 @@ impl Points {
             potential: 0.0,
             last_pos: x0, 
             temperature: v0.length()*v0.length()*0.5,
+            got_good: false,
+
         }
     }
 
@@ -79,6 +84,7 @@ impl Points {
             charge,
             last_pos: x,
             potential: 0.0,
+            got_good: false,
         }
     }
 
@@ -96,6 +102,11 @@ impl Points {
         self.pos += self.v + self.a * dt * dt;
         self.a = vec2(0.0, 0.0);
         self.temperature = self.mass*self.v.length()*self.v.length()*0.5;
+        if self.temperature < 0.0001{
+            self.got_good = true;
+        } else {
+            self.got_good = false;
+        }
     }
 
 
