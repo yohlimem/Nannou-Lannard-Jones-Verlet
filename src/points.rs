@@ -1,8 +1,9 @@
 
 use nannou::{lyon::geom::Angle, prelude::*};
+use std::collections::vec_deque::VecDeque;
 
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Points {
     pub simulate: bool,
     pub pos: Vec2,
@@ -15,6 +16,9 @@ pub struct Points {
     pub plate_radius: f32,
     pub temperature: f32,
     pub got_good: bool,
+    pub outside: bool,
+    pub last_ten_velocities: VecDeque<Vec2>,
+
 }
 
 impl Points {
@@ -37,7 +41,8 @@ impl Points {
                 last_pos: x0, 
                 temperature: v0.length()*v0.length()*0.5,
                 got_good: false,
-
+                last_ten_velocities: VecDeque::with_capacity(10),
+                outside: false,
             }
         }
         Points {
@@ -52,6 +57,8 @@ impl Points {
             last_pos: x0, 
             temperature: v0.length()*v0.length()*0.5,
             got_good: false,
+            last_ten_velocities: VecDeque::with_capacity(10),
+            outside: false,
 
         }
     }
@@ -85,6 +92,8 @@ impl Points {
             last_pos: x,
             potential: 0.0,
             got_good: false,
+            last_ten_velocities: VecDeque::with_capacity(10),
+            outside: false,
         }
     }
 
@@ -97,16 +106,18 @@ impl Points {
         if self.a.length() > 1000.0 {
             self.a = self.a.normalize() * 1000.0;
         }
-        self.v = (self.pos - self.last_pos) * temperature_depletion;
+        self.v = (self.pos - self.last_pos) * 0.9995;// * temperature_depletion;
+        if self.outside {
+            // println!("vel: {}", self.v);
+            let normal = -self.pos.normalize();
+            self.v -= 2.0 * self.v.dot(normal) / normal.dot(normal) * normal;
+            self.pos = (self.plate_radius - 0.1) * self.pos.normalize();
+        }
         self.last_pos = self.pos;
         self.pos += self.v + self.a * dt * dt;
         self.a = vec2(0.0, 0.0);
         self.temperature = self.mass*self.v.length()*self.v.length()*0.5;
-        if self.temperature < 0.0001{
-            self.got_good = true;
-        } else {
-            self.got_good = false;
-        }
+        // self.v = Vec2::ZERO;
     }
 
 
@@ -187,11 +198,19 @@ impl Points {
             let force = Self::force_with_r_squared(r, epsilon, sigma); // use the Lannard Jones potential to calculate the force between two points its
             let new_a = (force + self.charge_force_r_squared(p, r)) * r_vec.normalize() * 0.5 / self.mass; // calculate the acceleration of the point
             self.a += new_a; // add the acceleration to the point
-            if self.pos.length() > self.plate_radius{ // if the point is outside the plate, add a force to bring it back
-                // spring forces
-                self.a += self.pos.normalize() * Self::force_with_r_squared(sigma/2.0.powf(1.0/6.0)+0.01, epsilon, sigma);
-            }
+            self.outside = self.pos.length() > self.plate_radius
         }
+        // self.last_ten_velocities.push_front(self.v);
+        // if self.last_ten_velocities.len() > 10 {
+        //     self.last_ten_velocities.pop_back();
+        // }
+        // println!("{:?}", self.last_ten_velocities.len());
+        // let mut sum_temp = Vec2::ZERO;
+        // for v in self.last_ten_velocities.iter() {
+        //     sum_temp += *v;
+        // }
+        // self.got_good = (sum_temp.length_squared()/10.0) < 0.001;
+
         self.solver(Self::DT, temperature_depletion); // use the solver to move the points
     }
 }

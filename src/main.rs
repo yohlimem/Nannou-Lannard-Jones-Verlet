@@ -47,10 +47,9 @@ fn gen_atoms(model: &mut Model, n: u32, seed_size: u32) {
         (f32::sqrt(seed_size as f32) - 1.0) / 2.0 * 1.2 * model.sigma;
     for i in 0..n {
         let p = Points::random_init(model.plate_radius - 20.0, 0.5 - i as f32 % 2.0, model.T);
-        l.push(p);
-        if !(p.pos.x < seed_x0 - 20.0 || p.pos.x > seed_x1 + 20.0) && !(p.pos.y < seed_y0 - 20.0 || p.pos.y > seed_y1 + 20.0)
+        if !(!(p.pos.x < seed_x0 - 20.0 || p.pos.x > seed_x1 + 20.0) && !(p.pos.y < seed_y0 - 20.0 || p.pos.y > seed_y1 + 20.0))
         {
-            l.pop();
+            l.push(p);
         }
     }
     for x in 0..(f32::sqrt(seed_size as f32) as u32) {
