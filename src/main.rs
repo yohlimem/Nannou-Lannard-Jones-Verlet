@@ -8,6 +8,9 @@ use nannou_egui::{
 use rand::Rng;
 mod points;
 use points::Points;
+use std::error::Error;
+
+use csv::Writer;
 /*sigma = 10 # nm
 epsilon = 500 # J
 K = 20 # temporary
@@ -28,12 +31,19 @@ struct Model {
     p_l: Vec<Points>,       // list of all particles
     p_l_copy: Vec<Points>,
     speed: f32,
-    time: f32,
+    step_count: u32,
     stop_simulation: bool,
     avg_temperature: f32,
     seed_size: u32,
     atom_count: u32,
     temperature_depletion: f32,
+
+
+    writer: Writer<std::fs::File>,
+    test_temperatures: Vec<f32>,
+    test_number: u32,
+    average_for_tests: u32,
+    check_for_average: u32,
 }
 
 fn gen_atoms(model: &mut Model, n: u32, seed_size: u32) {
@@ -94,6 +104,7 @@ fn simulation_step(
     }
     for p in p_l_copy.iter_mut() { // for each particle
         p.step(p_l, epsilon, sigma, temperature_depletion); // make a step
+        p.test_crystalized();
         sum_temp += p.temperature; // for the average temperature
     }
     *model_avg_temperature = sum_temp/p_l.len() as f32 * 1000.0; // calculate the average temperature
@@ -114,23 +125,30 @@ fn model(app: &App) -> Model {
         .unwrap();
     let window = app.window(window_id).unwrap();
     let egui = Egui::from_window(&window);
-    let seed_size = 100;
-    let atom_count = 100;
+    let seed_size = 0;
+    let atom_count = 50;
+    let mut wtr = Writer::from_path("for_project.csv").unwrap();
+
     let mut model = Model {
         egui,
         sigma: 10.0,
         epsilon: 10.0,
-        T: 20.0,
-        temperature_depletion: 0.9995,
-        plate_radius: 500.0,
+        T: 10.0,
+        temperature_depletion: 0.9999,
+        plate_radius: 100.0,
         p_l_copy: vec![],
         p_l: vec![],
-        speed: 1.0,
-        time: 0.0,
+        test_temperatures: vec![50.0, 100.0, 150.0, 200.0, 250.0, 300.0, 350.0, 400.0, 450.0, 500.0],
+        speed: 10000.0,
+        step_count: 0,
         stop_simulation: false,
         avg_temperature: 0.0,
         seed_size,
         atom_count,
+        writer: wtr,
+        test_number: 0,
+        average_for_tests: 10,
+        check_for_average: 0,
     };
     gen_atoms(&mut model, atom_count, seed_size);
     model
@@ -157,15 +175,15 @@ fn update(app: &App, model: &mut Model, update: Update) {
             ui.label("epsilon");
             ui.add(egui::Slider::new(&mut model.epsilon, 1.0..=1000.0));
             ui.label("speed");
-            ui.add(egui::Slider::new(&mut model.speed, 1.0..=1000.0));
+            ui.add(egui::Slider::new(&mut model.speed, 1.0..=10000.0));
             ui.label("start control");
             ui.label("seed size");
-            slider_seed = Some(ui.add(egui::Slider::new(&mut model.seed_size, 1..=500)));
+            slider_seed = Some(ui.add(egui::Slider::new(&mut model.seed_size, 0..=500)));
             ui.label("atom count");
             slider_atom = Some(ui.add(egui::Slider::new(&mut model.atom_count, 1..=500)));
 
             ui.label("time");
-            ui.label(model.time.to_string());
+            ui.label(model.step_count.to_string());
             ui.label("average temperature");
             ui.label(model.avg_temperature.to_string());
 
@@ -187,7 +205,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                         model.sigma,
                         model.temperature_depletion,
                     );
-                    model.time += 0.1;
+                    model.step_count += 1;
                 }
             }
 
@@ -196,14 +214,16 @@ fn update(app: &App, model: &mut Model, update: Update) {
         });
     }
     if slider_seed.unwrap().changed() || temp_slider.unwrap().changed() || slider_atom.unwrap().changed(){
-        model.time = 0.0;
+        model.step_count = 0;
         gen_atoms(model, model.atom_count, model.seed_size);
     }
     if button_clicked {
-        gen_atoms(model, model.atom_count, model.seed_size);
-        model.time = 0.0;
+        reset_test(model);
     }
     for _ in 0..model.speed as u32 { // to speed up the simulation without sacrificing accuracy
+        if model.test_number >= model.test_temperatures.len() as u32 * model.average_for_tests {
+            break;
+        }
         simulation_step(
             &mut model.p_l_copy,
             &mut model.p_l,
@@ -215,9 +235,11 @@ fn update(app: &App, model: &mut Model, update: Update) {
             model.temperature_depletion,
         );
         if !model.stop_simulation {
-            model.time += 0.1;
+            model.step_count += 1;
             // break;
         }
+
+        next_test(model, model.step_count, app);
     }
 }
 
@@ -256,4 +278,60 @@ fn view(app: &App, model: &Model, frame: Frame) {
     }
     draw.to_frame(app, &frame).unwrap();
     model.egui.draw_to_frame(&frame).unwrap();
+}
+
+fn should_next_test(model: &Model, step_count: u32) -> bool{
+    return step_count >= 50000;
+}
+
+fn next_test(model: &mut Model,step_count: u32, app: &App){
+    if should_next_test(model, step_count){
+        model.test_number += 1;
+        let err = write_to_svg(model, app);
+        if model.test_number % model.average_for_tests == 0 {
+            model.check_for_average += 1;
+            
+            model.T = model.test_temperatures[model.check_for_average as usize];
+            println!("{}", model.T);
+        }
+        model.step_count = 0;
+        gen_atoms(model, model.atom_count, model.seed_size);
+    }
+}
+
+fn reset_test(model: &mut Model){
+    model.T = 20.0;
+    model.step_count = 0;
+    gen_atoms(model, model.atom_count, model.seed_size);
+}
+
+
+#[derive(serde::Serialize)]
+struct Row{
+    temperature: f32,
+    amount_crystalized: u32,
+}fn write_to_svg(model: &mut Model, app: &App) -> Result<(), Box<dyn Error>>{
+    // println!("writing to csv");
+    for _ in 0..20 {
+        simulation_step(
+            &mut model.p_l_copy,
+            &mut model.p_l,
+            app,
+            &mut false,
+            &mut model.avg_temperature,
+            model.epsilon,
+            model.sigma,
+            model.temperature_depletion,
+        );
+    }
+
+    let amount_crystalized = model.p_l.iter().filter(|x| x.got_good).count();
+    
+    model.writer.serialize(Row{
+        temperature: model.T,
+        amount_crystalized: amount_crystalized as u32,
+    })?;
+
+    Ok(())
+    
 }

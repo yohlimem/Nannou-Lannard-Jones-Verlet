@@ -24,7 +24,7 @@ pub struct Points {
 impl Points {
     //pub const SIGMA:f32 = 10.0;
     //pub const EPSILON:f32 = 10.0;
-    const DT:f32 = 0.01;
+    pub const DT:f32 = 0.01;
     pub fn new(x0: Vec2, v0: Vec2, a: Vec2, plate_radius: f32, charge: f32, simulate: bool) -> Self { // create a new point
         // println!("{:?}", Self::SIGMA);
         
@@ -106,7 +106,7 @@ impl Points {
         if self.a.length() > 1000.0 {
             self.a = self.a.normalize() * 1000.0;
         }
-        self.v = (self.pos - self.last_pos) * 0.9995;// * temperature_depletion;
+        self.v = (self.pos - self.last_pos) * temperature_depletion;
         if self.outside {
             // println!("vel: {}", self.v);
             let normal = -self.pos.normalize();
@@ -121,7 +121,7 @@ impl Points {
     }
 
 
-    pub fn force(r: f32, epsilon: f32, sigma: f32) -> f32 { // force between two points using the Lannard Jones potential
+    fn force(r: f32, epsilon: f32, sigma: f32) -> f32 { // force between two points using the Lannard Jones potential
 
         let rp2 = r*r;
         let rp4 = rp2*rp2;
@@ -134,11 +134,11 @@ impl Points {
         let sigma6 = sigma4*sigma2;
         let sigma12 = sigma6*sigma6;
 
-        let f = -2.0 * epsilon * ((12.0 * (sigma12) / rp13) - (6.0 * (sigma6) / rp7));
+        let f = -4.0 * epsilon * ((12.0 * (sigma12) / rp13) - (6.0 * (sigma6) / rp7));
         f
     }
 
-    pub fn force_with_r_squared(r_squared: f32, epsilon: f32, sigma: f32) -> f32 { // use r squared to avoid calculating the square root (which didnt happen lol)
+    fn force_with_r_squared(r_squared: f32, epsilon: f32, sigma: f32) -> f32 { // use r squared to avoid calculating the square root (which didnt happen lol)
         let r = r_squared.sqrt();
         let rp4 = r_squared*r_squared;
         let rp8 = rp4*rp4;
@@ -150,7 +150,7 @@ impl Points {
         let sigma6 = sigma4*sigma2;
         let sigma12 = sigma6*sigma6;
 
-        let f = -2.0 * epsilon * ((12.0 * (sigma12) / rp13) - (6.0 * (sigma6) / rp7));
+        let f = -4.0 * epsilon * ((12.0 * (sigma12) / rp13) - (6.0 * (sigma6) / rp7));
         f
     }
 
@@ -165,18 +165,18 @@ impl Points {
         (k * -self.charge * p.charge) / r_squared
     }
 
-    pub fn dist_to(&self, p: &Points) -> f32 { // distance between two points
+    fn dist_to(&self, p: &Points) -> f32 { // distance between two points
         let dist = self.pos.distance(p.pos);
         if dist == 0.0 {
             return 0.01;
         }
         dist
     }
-    pub fn dist_to_squared(&self, p: &Points) -> f32 { // distance squared between two points
+    fn dist_to_squared(&self, p: &Points) -> f32 { // distance squared between two points
         self.pos.distance_squared(p.pos)
     }
 
-    pub fn r_vector(&self, p: &Points) -> Vec2 { // vector between two points
+    fn r_vector(&self, p: &Points) -> Vec2 { // vector between two points
         let r = p.pos - self.pos;
         if r.is_nan() {
             return vec2(0.0, 0.0);
@@ -196,21 +196,24 @@ impl Points {
             let r = r_vec.length_squared(); // LENGTH SQUARED!!!
 
             let force = Self::force_with_r_squared(r, epsilon, sigma); // use the Lannard Jones potential to calculate the force between two points its
-            let new_a = (force + self.charge_force_r_squared(p, r)) * r_vec.normalize() * 0.5 / self.mass; // calculate the acceleration of the point
+            let new_a = (force + self.charge_force_r_squared(p, r)) * r_vec.normalize() / self.mass; // calculate the acceleration of the point
             self.a += new_a; // add the acceleration to the point
             self.outside = self.pos.length() > self.plate_radius
         }
-        // self.last_ten_velocities.push_front(self.v);
-        // if self.last_ten_velocities.len() > 10 {
-        //     self.last_ten_velocities.pop_back();
-        // }
-        // println!("{:?}", self.last_ten_velocities.len());
-        // let mut sum_temp = Vec2::ZERO;
-        // for v in self.last_ten_velocities.iter() {
-        //     sum_temp += *v;
-        // }
-        // self.got_good = (sum_temp.length_squared()/10.0) < 0.001;
+
 
         self.solver(Self::DT, temperature_depletion); // use the solver to move the points
+    }
+
+    pub fn test_crystalized(&mut self){
+        self.last_ten_velocities.push_front(self.v);
+        if self.last_ten_velocities.len() > 20 {
+            self.last_ten_velocities.pop_back();
+        }
+        let mut sum_temp = Vec2::ZERO;
+        for v in self.last_ten_velocities.iter() {
+            sum_temp += *v;
+        }
+        self.got_good = (sum_temp.length_squared()/20.0) < 0.04;
     }
 }
