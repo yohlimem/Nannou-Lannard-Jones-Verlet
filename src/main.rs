@@ -134,11 +134,11 @@ fn model(app: &App) -> Model {
         sigma: 10.0,
         epsilon: 10.0,
         T: 10.0,
-        temperature_depletion: 0.9999,
+        temperature_depletion: 1.0,
         plate_radius: 100.0,
         p_l_copy: vec![],
         p_l: vec![],
-        test_temperatures: vec![50.0, 100.0, 150.0, 200.0, 250.0, 300.0, 350.0, 400.0, 450.0, 500.0],
+        test_temperatures: vec![10.0,20.0,30.0,40.0,50.0,60.0,70.0,80.0,90.0,100.0,110.0,120.0,130.0,140.0,150.0,160.0,170.0,180.0,190.0,200.0],
         speed: 10000.0,
         step_count: 0,
         stop_simulation: false,
@@ -281,7 +281,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 }
 
 fn should_next_test(model: &Model, step_count: u32) -> bool{
-    return step_count >= 50000;
+    return step_count >= 40000;
 }
 
 fn next_test(model: &mut Model,step_count: u32, app: &App){

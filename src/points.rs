@@ -81,7 +81,7 @@ impl Points {
         // println!("vel: {}", v);
         Points {
             simulate: true,
-            pos: x + v*Self::DT+a*Self::DT*Self::DT,
+            pos: x + v*Self::DT+a*Self::DT*Self::DT*0.5,
             v,
             temperature: v.length()*v.length()*0.5,
 
@@ -214,6 +214,6 @@ impl Points {
         for v in self.last_ten_velocities.iter() {
             sum_temp += *v;
         }
-        self.got_good = (sum_temp.length_squared()/20.0) < 0.04;
+        self.got_good = (sum_temp.length_squared()/20.0) < 0.05;
     }
 }
