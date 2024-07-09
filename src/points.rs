@@ -198,6 +198,7 @@ impl Points {
             let force = Self::force_with_r_squared(r, epsilon, sigma); // use the Lannard Jones potential to calculate the force between two points its
             let new_a = (force + self.charge_force_r_squared(p, r)) * r_vec.normalize() / self.mass; // calculate the acceleration of the point
             self.a += new_a; // add the acceleration to the point
+            
             self.outside = self.pos.length() > self.plate_radius
         }
 

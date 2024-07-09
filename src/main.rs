@@ -26,7 +26,7 @@ struct Model {
     egui: Egui,
     sigma: f32,             // nm
     epsilon: f32,           // J
-    T: f32,                 // temperature
+    temperature: f32,                 // temperature
     plate_radius: f32,
     p_l: Vec<Points>,       // list of all particles
     p_l_copy: Vec<Points>,
@@ -56,7 +56,7 @@ fn gen_atoms(model: &mut Model, n: u32, seed_size: u32) {
     let seed_y1 =
         (f32::sqrt(seed_size as f32) - 1.0) / 2.0 * 1.2 * model.sigma;
     for i in 0..n {
-        let p = Points::random_init(model.plate_radius - 20.0, 0.5 - i as f32 % 2.0, model.T);
+        let p = Points::random_init(model.plate_radius - 20.0, 0.5 - i as f32 % 2.0, model.temperature);
         if !(!(p.pos.x < seed_x0 - 20.0 || p.pos.x > seed_x1 + 20.0) && !(p.pos.y < seed_y0 - 20.0 || p.pos.y > seed_y1 + 20.0))
         {
             l.push(p);
@@ -94,7 +94,7 @@ fn simulation_step(
     model_avg_temperature: &mut f32,
     epsilon: f32,
     sigma: f32,
-    temperature_depletion: f32,
+    temperature_depletion: &mut f32,
 ) { // do a step of the simulation
     // *p_l_copy = p_l.clone(); // clone the list of particles so we can move everything at the same time
 
@@ -103,11 +103,15 @@ fn simulation_step(
         return;
     }
     for p in p_l_copy.iter_mut() { // for each particle
-        p.step(p_l, epsilon, sigma, temperature_depletion); // make a step
+        p.step(p_l, epsilon, sigma, *temperature_depletion); // make a step
         p.test_crystalized();
         sum_temp += p.temperature; // for the average temperature
     }
-    *model_avg_temperature = sum_temp/p_l.len() as f32 * 1000.0; // calculate the average temperature
+    let last_avg_temperature = model_avg_temperature.clone(); // save the last average temperature
+    *model_avg_temperature = sum_temp/p_l.len() as f32; // calculate the average temperature
+
+    // last_avg_temperature is 100% and model_avg_temperature is the next temperature
+    *temperature_depletion = last_avg_temperature/(*model_avg_temperature);
 
     *p_l = p_l_copy.clone(); // move the particles
 }
@@ -133,12 +137,12 @@ fn model(app: &App) -> Model {
         egui,
         sigma: 10.0,
         epsilon: 10.0,
-        T: 10.0,
-        temperature_depletion: 1.0,
+        temperature: 10.0,
+        temperature_depletion: 0.9999,
         plate_radius: 100.0,
         p_l_copy: vec![],
         p_l: vec![],
-        test_temperatures: vec![10.0,20.0,30.0,40.0,50.0,60.0,70.0,80.0,90.0,100.0,110.0,120.0,130.0,140.0,150.0,160.0,170.0,180.0,190.0,200.0],
+        test_temperatures: vec![10.0,20.0,30.0,40.0,50.0,60.0,70.0,80.0,90.0,100.0,110.0,120.0,130.0,140.0,150.0,160.0,170.0,180.0,190.0,200.0, 210.0, 220.0, 230.0, 240.0, 250.0, 260.0, 270.0, 280.0, 290.0, 300.0, 310.0, 320.0, 330.0, 340.0, 350.0, 360.0, 370.0, 380.0, 390.0, 400.0, 410.0, 420.0, 430.0, 440.0, 450.0, 460.0, 470.0, 480.0, 490.0, 500.0, 510.0, 520.0, 530.0, 540.0, 550.0, 560.0, 570.0, 580.0, 590.0, 600.0, 610.0, 620.0, 630.0, 640.0, 650.0, 660.0, 670.0, 680.0, 690.0, 700.0, 710.0, 720.0, 730.0, 740.0, 750.0, 760.0, 770.0, 780.0, 790.0, 800.0, 810.0, 820.0, 830.0, 840.0, 850.0, 860.0, 870.0, 880.0, 890.0, 900.0, 910.0, 920.0, 930.0, 940.0, 950.0, 960.0, 970.0, 980.0, 990.0, 1000.0, 1010.0, 1020.0, 1030.0, 1040.0, 1050.0, 1060.0, 1070.0, 1080.0, 1090.0, 1100.0, 1110.0, 1120.0, 1130.0, 1140.0, 1150.0, 1160.0, 1170.0],
         speed: 10000.0,
         step_count: 0,
         stop_simulation: false,
@@ -167,7 +171,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
 
         egui::Window::new("Simulation controls").show(&ctx, |ui| {
             ui.label("temperature");
-            temp_slider = Some(ui.add(egui::Slider::new(&mut model.T, 1.0..=100000.0)));
+            temp_slider = Some(ui.add(egui::Slider::new(&mut model.temperature, 1.0..=100000.0)));
             ui.label("temperature depletion");
             ui.add(egui::Slider::new(&mut model.temperature_depletion, 0.999..=1.00000001));
             ui.label("sigma/distance");
@@ -203,7 +207,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                         &mut model.avg_temperature,
                         model.epsilon,
                         model.sigma,
-                        model.temperature_depletion,
+                        &mut model.temperature_depletion,
                     );
                     model.step_count += 1;
                 }
@@ -232,7 +236,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
             &mut model.avg_temperature,
             model.epsilon,
             model.sigma,
-            model.temperature_depletion,
+            &mut model.temperature_depletion,
         );
         if !model.stop_simulation {
             model.step_count += 1;
@@ -282,6 +286,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
 fn should_next_test(model: &Model, step_count: u32) -> bool{
     return step_count >= 40000;
+    // false
 }
 
 fn next_test(model: &mut Model,step_count: u32, app: &App){
@@ -291,8 +296,8 @@ fn next_test(model: &mut Model,step_count: u32, app: &App){
         if model.test_number % model.average_for_tests == 0 {
             model.check_for_average += 1;
             
-            model.T = model.test_temperatures[model.check_for_average as usize];
-            println!("{}", model.T);
+            model.temperature = model.test_temperatures[model.check_for_average as usize];
+            println!("{}", model.temperature);
         }
         model.step_count = 0;
         gen_atoms(model, model.atom_count, model.seed_size);
@@ -300,7 +305,7 @@ fn next_test(model: &mut Model,step_count: u32, app: &App){
 }
 
 fn reset_test(model: &mut Model){
-    model.T = 20.0;
+    model.temperature = 20.0;
     model.step_count = 0;
     gen_atoms(model, model.atom_count, model.seed_size);
 }
@@ -321,14 +326,14 @@ struct Row{
             &mut model.avg_temperature,
             model.epsilon,
             model.sigma,
-            model.temperature_depletion,
+            &mut model.temperature_depletion,
         );
     }
 
     let amount_crystalized = model.p_l.iter().filter(|x| x.got_good).count();
     
     model.writer.serialize(Row{
-        temperature: model.T,
+        temperature: model.temperature,
         amount_crystalized: amount_crystalized as u32,
     })?;
 
