@@ -106,7 +106,7 @@ impl Points {
         if self.a.length() > 1000.0 {
             self.a = self.a.normalize() * 1000.0;
         }
-        self.v = (self.pos - self.last_pos) * 0.9995;// * temperature_depletion;
+        self.v = (self.pos - self.last_pos) * temperature_depletion;
         if self.outside {
             // println!("vel: {}", self.v);
             let normal = -self.pos.normalize();
@@ -156,12 +156,12 @@ impl Points {
 
 
     fn charge_force(&self, p: &Points, r: f32) -> f32 { // calculate the force between two points using the coulomb potential which is the magnetic force between two charges
-        let k = 10.0 * 1000.0;
+        let k = 10.0 * 10000.0;
         (k * -self.charge * p.charge) / (r*r)
     }
 
     fn charge_force_r_squared(&self, p: &Points, r_squared: f32) -> f32 { // calculate the force between two points using the coulomb potential which is the magnetic force between two charges using r squared to avoid calculating the square root
-        let k = 10.0 * 1000.0;
+        let k = 10.0 * 9000.0;
         (k * -self.charge * p.charge) / r_squared
     }
 

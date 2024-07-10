@@ -82,9 +82,10 @@ fn simulation_step(
     app: &App,
     simulation_stop: &mut bool,
     model_avg_temperature: &mut f32,
+    temperature: f32,
     epsilon: f32,
     sigma: f32,
-    temperature_depletion: f32,
+    temperature_depletion: &mut f32,
 ) { // do a step of the simulation
     // *p_l_copy = p_l.clone(); // clone the list of particles so we can move everything at the same time
 
@@ -93,10 +94,16 @@ fn simulation_step(
         return;
     }
     for p in p_l_copy.iter_mut() { // for each particle
-        p.step(p_l, epsilon, sigma, temperature_depletion); // make a step
+        p.step(p_l, epsilon, sigma, *temperature_depletion); // make a step
         sum_temp += p.temperature; // for the average temperature
     }
-    *model_avg_temperature = sum_temp/p_l.len() as f32 * 1000.0; // calculate the average temperature
+    *model_avg_temperature = sum_temp/p_l.len() as f32 * 10000.0; // calculate the average temperature
+    let last_temp_depeplition = *temperature_depletion;
+    // lerp to smoothen the temperature depletion so it doesn't "explode"
+    *temperature_depletion = lerp((temperature / *model_avg_temperature)..=last_temp_depeplition,0.5); // calculate the temperature depletion
+
+    // last_avg_temperature is 100% and model_avg_temperature is the next temperature
+    // println!("depletion: {}", *temperature_depletion);
 
     *p_l = p_l_copy.clone(); // move the particles
 }
@@ -114,21 +121,21 @@ fn model(app: &App) -> Model {
         .unwrap();
     let window = app.window(window_id).unwrap();
     let egui = Egui::from_window(&window);
-    let seed_size = 100;
+    let seed_size = 0;
     let atom_count = 100;
     let mut model = Model {
         egui,
         sigma: 10.0,
         epsilon: 10.0,
         T: 20.0,
-        temperature_depletion: 0.9995,
+        temperature_depletion: 1.0, // for controlling the temperature to stay at 20; see simulation step after for loop
         plate_radius: 500.0,
         p_l_copy: vec![],
         p_l: vec![],
         speed: 1.0,
         time: 0.0,
         stop_simulation: false,
-        avg_temperature: 0.0,
+        avg_temperature: 0.1,
         seed_size,
         atom_count,
     };
@@ -150,8 +157,9 @@ fn update(app: &App, model: &mut Model, update: Update) {
         egui::Window::new("Simulation controls").show(&ctx, |ui| {
             ui.label("temperature");
             temp_slider = Some(ui.add(egui::Slider::new(&mut model.T, 1.0..=100000.0)));
-            ui.label("temperature depletion");
-            ui.add(egui::Slider::new(&mut model.temperature_depletion, 0.999..=1.00000001));
+            // ui.label("temperature depletion");
+            // ui.add(egui::Slider::new(&mut model.temperature_depletion, 0.999..=1.00000001));
+            ui.label(format!("temperature depletion {}", model.temperature_depletion));
             ui.label("sigma/distance");
             ui.add(egui::Slider::new(&mut model.sigma, 1.0..=100.0));
             ui.label("epsilon");
@@ -183,9 +191,10 @@ fn update(app: &App, model: &mut Model, update: Update) {
                         app,
                         &mut false,
                         &mut model.avg_temperature,
+                        model.T,
                         model.epsilon,
                         model.sigma,
-                        model.temperature_depletion,
+                        &mut model.temperature_depletion,
                     );
                     model.time += 0.1;
                 }
@@ -197,9 +206,15 @@ fn update(app: &App, model: &mut Model, update: Update) {
     }
     if slider_seed.unwrap().changed() || temp_slider.unwrap().changed() || slider_atom.unwrap().changed(){
         model.time = 0.0;
+        model.avg_temperature = 0.1;
+        model.temperature_depletion = 1.0;
+
         gen_atoms(model, model.atom_count, model.seed_size);
     }
     if button_clicked {
+        model.avg_temperature = 0.1;
+        model.temperature_depletion = 1.0;
+
         gen_atoms(model, model.atom_count, model.seed_size);
         model.time = 0.0;
     }
@@ -210,9 +225,10 @@ fn update(app: &App, model: &mut Model, update: Update) {
             app,
             &mut model.stop_simulation,
             &mut model.avg_temperature,
+            model.T,
             model.epsilon,
             model.sigma,
-            model.temperature_depletion,
+            &mut model.temperature_depletion,
         );
         if !model.stop_simulation {
             model.time += 0.1;
