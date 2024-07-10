@@ -161,7 +161,7 @@ impl Points {
     }
 
     fn charge_force_r_squared(&self, p: &Points, r_squared: f32) -> f32 { // calculate the force between two points using the coulomb potential which is the magnetic force between two charges using r squared to avoid calculating the square root
-        let k = 10.0 * 1000.0;
+        let k = 10.0 * 10000.0;
         (k * -self.charge * p.charge) / r_squared
     }
 

@@ -92,6 +92,7 @@ fn simulation_step(
     app: &App,
     simulation_stop: &mut bool,
     model_avg_temperature: &mut f32,
+    temperature: f32,
     epsilon: f32,
     sigma: f32,
     temperature_depletion: &mut f32,
@@ -107,11 +108,9 @@ fn simulation_step(
         p.test_crystalized();
         sum_temp += p.temperature; // for the average temperature
     }
-    let last_avg_temperature = model_avg_temperature.clone(); // save the last average temperature
-    *model_avg_temperature = sum_temp/p_l.len() as f32; // calculate the average temperature
-
-    // last_avg_temperature is 100% and model_avg_temperature is the next temperature
-    *temperature_depletion = last_avg_temperature/(*model_avg_temperature);
+    *model_avg_temperature = sum_temp/p_l.len() as f32 * 10000.0; // calculate the average temperature
+    // lerp to smoothen the temperature depletion so it doesn't "explode"
+    *temperature_depletion = lerp((temperature / *model_avg_temperature)..=*temperature_depletion,0.5); // calculate the temperature depletion
 
     *p_l = p_l_copy.clone(); // move the particles
 }
@@ -142,7 +141,7 @@ fn model(app: &App) -> Model {
         plate_radius: 100.0,
         p_l_copy: vec![],
         p_l: vec![],
-        test_temperatures: vec![10.0,20.0,30.0,40.0,50.0,60.0,70.0,80.0,90.0,100.0,110.0,120.0,130.0,140.0,150.0,160.0,170.0,180.0,190.0,200.0, 210.0, 220.0, 230.0, 240.0, 250.0, 260.0, 270.0, 280.0, 290.0, 300.0, 310.0, 320.0, 330.0, 340.0, 350.0, 360.0, 370.0, 380.0, 390.0, 400.0, 410.0, 420.0, 430.0, 440.0, 450.0, 460.0, 470.0, 480.0, 490.0, 500.0, 510.0, 520.0, 530.0, 540.0, 550.0, 560.0, 570.0, 580.0, 590.0, 600.0, 610.0, 620.0, 630.0, 640.0, 650.0, 660.0, 670.0, 680.0, 690.0, 700.0, 710.0, 720.0, 730.0, 740.0, 750.0, 760.0, 770.0, 780.0, 790.0, 800.0, 810.0, 820.0, 830.0, 840.0, 850.0, 860.0, 870.0, 880.0, 890.0, 900.0, 910.0, 920.0, 930.0, 940.0, 950.0, 960.0, 970.0, 980.0, 990.0, 1000.0, 1010.0, 1020.0, 1030.0, 1040.0, 1050.0, 1060.0, 1070.0, 1080.0, 1090.0, 1100.0, 1110.0, 1120.0, 1130.0, 1140.0, 1150.0, 1160.0, 1170.0],
+        test_temperatures: vec![10.0,20.0,30.0,40.0,50.0,60.0,70.0,80.0,90.0,100.0,110.0,120.0,130.0,140.0,150.0,160.0,170.0,180.0,190.0,200.0, 210.0, 220.0, 230.0, 240.0, 250.0, 260.0, 270.0, 280.0, 290.0, 300.0, 310.0, 320.0, 330.0, 340.0, 350.0, 360.0, 370.0, 380.0, 390.0, 400.0, 410.0, 420.0, 430.0, 440.0, 450.0, 460.0, 470.0, 480.0, 490.0, 500.0, 510.0, 520.0, 530.0, 540.0, 550.0, 560.0, 570.0, 580.0, 590.0, 600.0, 610.0, 620.0, 630.0, 640.0, 650.0, 660.0, 670.0, 680.0, 690.0, 700.0, 710.0, 720.0, 730.0, 740.0, 750.0, 760.0, 770.0, 780.0, 790.0, 800.0, 810.0, 820.0, 830.0, 840.0, 850.0, 860.0, 870.0, 880.0, 890.0, 900.0, 910.0, 920.0, 930.0, 940.0, 950.0, 960.0, 970.0, 980.0, 990.0, 1000.0],
         speed: 10000.0,
         step_count: 0,
         stop_simulation: false,
@@ -172,8 +171,8 @@ fn update(app: &App, model: &mut Model, update: Update) {
         egui::Window::new("Simulation controls").show(&ctx, |ui| {
             ui.label("temperature");
             temp_slider = Some(ui.add(egui::Slider::new(&mut model.temperature, 1.0..=100000.0)));
-            ui.label("temperature depletion");
-            ui.add(egui::Slider::new(&mut model.temperature_depletion, 0.999..=1.00000001));
+            ui.label(format!("temperature depletion: {}", model.temperature_depletion));
+            // ui.add(egui::Slider::new(&mut model.temperature_depletion, 0.999..=1.00000001));
             ui.label("sigma/distance");
             ui.add(egui::Slider::new(&mut model.sigma, 1.0..=100.0));
             ui.label("epsilon");
@@ -205,6 +204,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                         app,
                         &mut false,
                         &mut model.avg_temperature,
+                        model.temperature,
                         model.epsilon,
                         model.sigma,
                         &mut model.temperature_depletion,
@@ -234,6 +234,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
             app,
             &mut model.stop_simulation,
             &mut model.avg_temperature,
+            model.temperature,
             model.epsilon,
             model.sigma,
             &mut model.temperature_depletion,
@@ -318,12 +319,14 @@ struct Row{
 }fn write_to_svg(model: &mut Model, app: &App) -> Result<(), Box<dyn Error>>{
     // println!("writing to csv");
     for _ in 0..20 {
+        model.temperature_depletion = 0.999;
         simulation_step(
             &mut model.p_l_copy,
             &mut model.p_l,
             app,
             &mut false,
             &mut model.avg_temperature,
+            model.temperature,
             model.epsilon,
             model.sigma,
             &mut model.temperature_depletion,
@@ -331,6 +334,7 @@ struct Row{
     }
 
     let amount_crystalized = model.p_l.iter().filter(|x| x.got_good).count();
+    println!("amount_crystalized: {}",amount_crystalized);
     
     model.writer.serialize(Row{
         temperature: model.temperature,
