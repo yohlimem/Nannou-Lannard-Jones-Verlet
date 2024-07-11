@@ -186,35 +186,42 @@ impl Points {
     }
     
 
+
     pub fn step(&mut self, p_l: &[Points], epsilon: f32, sigma: f32 , temperature_depletion: f32) { // do a step of the simulation
         if !self.simulate {return;}
+        let mut sum_times = 0;
         for p in p_l {
             if p.pos == self.pos {
                 continue;
+            }
+
+            if p.pos.distance_squared(self.pos) <= 400.0 {
+                // self.around_velocities += (self.v - p.v).abs();
+                // println!("vel: {}", (self.v - p.v).abs());
+                sum_times += 1;
             }
             let r_vec = self.r_vector(p); // calculate the vector between two points
             let r = r_vec.length_squared(); // LENGTH SQUARED!!!
 
             let force = Self::force_with_r_squared(r, epsilon, sigma); // use the Lannard Jones potential to calculate the force between two points its
-            let new_a = (force + self.charge_force_r_squared(p, r)) * r_vec.normalize() / self.mass; // calculate the acceleration of the point
+            let new_a = (force + self.charge_force_r_squared(p, r)) * r_vec.normalize() * 0.5 / self.mass; // calculate the acceleration of the point
             self.a += new_a; // add the acceleration to the point
-            
             self.outside = self.pos.length() > self.plate_radius
         }
-
-
+        self.got_good = sum_times >= 5;
+        
         self.solver(Self::DT, temperature_depletion); // use the solver to move the points
     }
 
-    pub fn test_crystalized(&mut self){
-        self.last_ten_velocities.push_front(self.v);
-        if self.last_ten_velocities.len() > 20 {
-            self.last_ten_velocities.pop_back();
-        }
-        let mut sum_temp = Vec2::ZERO;
-        for v in self.last_ten_velocities.iter() {
-            sum_temp += *v;
-        }
-        self.got_good = (sum_temp.length_squared()/20.0) < 0.05;
-    }
+    // pub fn test_crystalized(&mut self){
+    //     self.last_ten_velocities.push_front(self.v);
+    //     if self.last_ten_velocities.len() > 20 {
+    //         self.last_ten_velocities.pop_back();
+    //     }
+    //     let mut sum_temp = Vec2::ZERO;
+    //     for v in self.last_ten_velocities.iter() {
+    //         sum_temp += *v;
+    //     }
+    //     self.got_good = (sum_temp.length_squared()/20.0) < 0.05;
+    // }
 }

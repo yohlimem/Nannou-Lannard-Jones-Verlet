@@ -105,7 +105,7 @@ fn simulation_step(
     }
     for p in p_l_copy.iter_mut() { // for each particle
         p.step(p_l, epsilon, sigma, *temperature_depletion); // make a step
-        p.test_crystalized();
+        // p.test_crystalized();
         sum_temp += p.temperature; // for the average temperature
     }
     *model_avg_temperature = sum_temp/p_l.len() as f32 * 10000.0; // calculate the average temperature
