@@ -231,10 +231,16 @@ fn update(app: &App, model: &mut Model, update: Update) {
             &mut model.temperature_depletion,
         );
         if !model.stop_simulation {
-            model.time += 0.1;
+            model.time += 1.0;
             // break;
         }
     }
+    // if model.time >= 60000.0{
+    //     for p in &model.p_l{
+    //         println!("v: {:?}", p.v.angle())
+    //     }
+
+    // }
 }
 
 fn raw_window_event(_app: &App, model: &mut Model, event: &nannou::winit::event::WindowEvent) {
@@ -270,6 +276,7 @@ fn view(app: &App, model: &Model, frame: Frame) {
 
         }
     }
+    draw.ellipse().radius(model.plate_radius).color(rgba(0.0, 0.0, 0.0, 0.0)).stroke_weight(5.0); // draw the plate
     draw.to_frame(app, &frame).unwrap();
     model.egui.draw_to_frame(&frame).unwrap();
 }

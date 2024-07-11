@@ -17,7 +17,7 @@ pub struct Points {
     pub temperature: f32,
     pub got_good: bool,
     pub outside: bool,
-    pub last_ten_velocities: VecDeque<Vec2>,
+    pub around_velocities: Vec2, // velocities
 
 }
 
@@ -41,7 +41,7 @@ impl Points {
                 last_pos: x0, 
                 temperature: v0.length()*v0.length()*0.5,
                 got_good: false,
-                last_ten_velocities: VecDeque::with_capacity(10),
+                around_velocities: Vec2::ZERO,
                 outside: false,
             }
         }
@@ -57,7 +57,7 @@ impl Points {
             last_pos: x0, 
             temperature: v0.length()*v0.length()*0.5,
             got_good: false,
-            last_ten_velocities: VecDeque::with_capacity(10),
+            around_velocities: Vec2::ZERO,
             outside: false,
 
         }
@@ -92,7 +92,7 @@ impl Points {
             last_pos: x,
             potential: 0.0,
             got_good: false,
-            last_ten_velocities: VecDeque::with_capacity(10),
+            around_velocities: Vec2::ZERO,
             outside: false,
         }
     }
@@ -188,9 +188,16 @@ impl Points {
 
     pub fn step(&mut self, p_l: &[Points], epsilon: f32, sigma: f32 , temperature_depletion: f32) { // do a step of the simulation
         if !self.simulate {return;}
+        let mut sum_times = 0;
         for p in p_l {
             if p.pos == self.pos {
                 continue;
+            }
+
+            if p.pos.distance_squared(self.pos) <= 400.0 {
+                // self.around_velocities += (self.v - p.v).abs();
+                // println!("vel: {}", (self.v - p.v).abs());
+                sum_times += 1;
             }
             let r_vec = self.r_vector(p); // calculate the vector between two points
             let r = r_vec.length_squared(); // LENGTH SQUARED!!!
@@ -200,17 +207,8 @@ impl Points {
             self.a += new_a; // add the acceleration to the point
             self.outside = self.pos.length() > self.plate_radius
         }
-        // self.last_ten_velocities.push_front(self.v);
-        // if self.last_ten_velocities.len() > 10 {
-        //     self.last_ten_velocities.pop_back();
-        // }
-        // println!("{:?}", self.last_ten_velocities.len());
-        // let mut sum_temp = Vec2::ZERO;
-        // for v in self.last_ten_velocities.iter() {
-        //     sum_temp += *v;
-        // }
-        // self.got_good = (sum_temp.length_squared()/10.0) < 0.001;
-
+        self.got_good = sum_times >= 5;
+        
         self.solver(Self::DT, temperature_depletion); // use the solver to move the points
     }
 }
