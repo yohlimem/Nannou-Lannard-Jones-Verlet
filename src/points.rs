@@ -189,7 +189,7 @@ impl Points {
 
     pub fn step(&mut self, p_l: &[Points], epsilon: f32, sigma: f32 , temperature_depletion: f32) { // do a step of the simulation
         if !self.simulate {return;}
-        let mut sum_times = 0;
+        let mut sum_times = 0; // count the amount of points around the current point in the looop
         for p in p_l {
             if p.pos == self.pos {
                 continue;
