@@ -37,6 +37,7 @@ struct Model {
     seed_size: u32,
     atom_count: u32,
     temperature_depletion: f32,
+    use_electric_force: bool,
 
 
     writer: Writer<std::fs::File>,
@@ -96,6 +97,7 @@ fn simulation_step(
     epsilon: f32,
     sigma: f32,
     temperature_depletion: &mut f32,
+    user_electric_force: &bool,
 ) { // do a step of the simulation
     // *p_l_copy = p_l.clone(); // clone the list of particles so we can move everything at the same time
 
@@ -104,7 +106,7 @@ fn simulation_step(
         return;
     }
     for p in p_l_copy.iter_mut() { // for each particle
-        p.step(p_l, epsilon, sigma, *temperature_depletion); // make a step
+        p.step(p_l, epsilon, sigma, *temperature_depletion, user_electric_force); // make a step
         // p.test_crystalized();
         sum_temp += p.temperature; // for the average temperature
     }
@@ -152,6 +154,7 @@ fn model(app: &App) -> Model {
         test_number: 0,
         average_for_tests: 10,
         check_for_average: 0,
+        use_electric_force: false,
     };
     gen_atoms(&mut model, atom_count, seed_size);
     model
@@ -179,6 +182,8 @@ fn update(app: &App, model: &mut Model, update: Update) {
             ui.add(egui::Slider::new(&mut model.epsilon, 1.0..=1000.0));
             ui.label("speed");
             ui.add(egui::Slider::new(&mut model.speed, 1.0..=10000.0));
+            ui.label("use electric force");
+            ui.add(egui::Checkbox::new(&mut model.use_electric_force, ""));
             ui.label("start control");
             ui.label("seed size");
             slider_seed = Some(ui.add(egui::Slider::new(&mut model.seed_size, 0..=500)));
@@ -208,6 +213,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
                         model.epsilon,
                         model.sigma,
                         &mut model.temperature_depletion,
+                        &model.use_electric_force,
                     );
                     model.step_count += 1;
                 }
@@ -238,6 +244,7 @@ fn update(app: &App, model: &mut Model, update: Update) {
             model.epsilon,
             model.sigma,
             &mut model.temperature_depletion,
+            &model.use_electric_force,
         );
         if !model.stop_simulation {
             model.step_count += 1;
@@ -330,6 +337,7 @@ struct Row{
             model.epsilon,
             model.sigma,
             &mut model.temperature_depletion,
+            &model.use_electric_force,
         );
     }
 

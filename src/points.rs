@@ -187,9 +187,11 @@ impl Points {
     
 
 
-    pub fn step(&mut self, p_l: &[Points], epsilon: f32, sigma: f32 , temperature_depletion: f32) { // do a step of the simulation
+    pub fn step(&mut self, p_l: &[Points], epsilon: f32, sigma: f32 , temperature_depletion: f32, use_electric_force: &bool,) { // do a step of the simulation
         if !self.simulate {return;}
         let mut sum_times = 0; // count the amount of points around the current point in the looop
+        let use_electric_force = *use_electric_force as i32 as f32;
+
         for p in p_l {
             if p.pos == self.pos {
                 continue;
@@ -203,8 +205,9 @@ impl Points {
             let r_vec = self.r_vector(p); // calculate the vector between two points
             let r = r_vec.length_squared(); // LENGTH SQUARED!!!
 
+
             let force = Self::force_with_r_squared(r, epsilon, sigma); // use the Lannard Jones potential to calculate the force between two points its
-            let new_a = (force + self.charge_force_r_squared(p, r)) * r_vec.normalize() * 0.5 / self.mass; // calculate the acceleration of the point
+            let new_a = (force + self.charge_force_r_squared(p, r) * use_electric_force) * r_vec.normalize() * 0.5 / self.mass; // calculate the acceleration of the point
             self.a += new_a; // add the acceleration to the point
             self.outside = self.pos.length() > self.plate_radius
         }
